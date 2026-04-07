@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maestría en Finanzas</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f3ef;
+    --surface: #ffffff;
+    --surface2: #f0ede8;
+    --border: #e0dbd3;
+    --text: #1a1814;
+    --muted: #7a7269;
+    --accent: #2d4a3e;
+    --accent-light: #e8f0ed;
+    --accent2: #8b4a2a;
+    --accent2-light: #f5ece7;
+    --amber: #b07d2a;
+    --amber-light: #faf3e3;
+    --blue: #2a4a6b;
+    --blue-light: #e8eef5;
+    --gold: #b07d2a;
+    --gold-light: #faf3e3;
+  }
+  html.dark {
+    --bg: #161412;
+    --surface: #1f1d1a;
+    --surface2: #272421;
+    --border: #333028;
+    --text: #ede9e3;
+    --muted: #8a8278;
+    --accent: #4a7a66;
+    --accent-light: #1a2e27;
+    --accent2: #b8714a;
+    --accent2-light: #2a1e17;
+    --amber: #c99040;
+    --amber-light: #261e0e;
+    --blue: #5a8ab8;
+    --blue-light: #151e28;
+    --gold: #c9a84c;
+    --gold-light: rgba(201,168,76,0.12);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+    transition: background 0.2s, color 0.2s;
+  }
+  a { color: inherit; text-decoration: none; }
+
+  .theme-toggle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--muted);
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  .theme-toggle:hover { background: var(--surface2); }
+
+  .view-tabs {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface2);
+  }
+  .view-tab {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 6px 18px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    border-right: 1px solid var(--border);
+  }
+  .view-tab:last-child { border-right: none; }
+  .view-tab.active { background: var(--surface); color: var(--text); }
+  .view-tab:hover:not(.active) { color: var(--text); }
+
+  .shell { max-width: 1100px; margin: 0 auto; padding: 2.5rem 1.5rem; }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .header-left h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 2.2rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .header-left p { font-size: 13px; color: var(--muted); margin-top: 4px; font-weight: 300; }
+  .header-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+  }
+  .metric-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .metric-value { font-family: 'DM Serif Display', serif; font-size: 1.9rem; font-weight: 400; line-height: 1; }
+  .metric-value span { font-size: 1.1rem; color: var(--muted); }
+  .metric-sub { font-size: 11px; color: var(--muted); margin-top: 5px; }
+  .prog-bar-bg { background: var(--surface2); border-radius: 3px; height: 4px; margin-top: 8px; }
+  .prog-bar { height: 4px; border-radius: 3px; background: var(--accent); }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 2rem; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    background: var(--surface2);
+  }
+
+  .subj-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 8px;
+  }
+  .subj-row:last-child { border-bottom: none; }
+  .subj-name { font-size: 13px; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { font-size: 11px; font-family: 'DM Mono', monospace; padding: 2px 9px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+  .b-ok   { background: var(--accent-light); color: var(--accent); }
+  .b-cur  { background: var(--amber-light);  color: var(--amber);  }
+  .b-pend { background: var(--surface2);     color: var(--muted);  }
+  .b-soon { background: var(--blue-light);   color: var(--blue);   }
+  .nota   { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); min-width: 20px; text-align: right; flex-shrink: 0; }
+
+  .next-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .next-row:last-child { border-bottom: none; }
+  .next-subj { font-size: 13px; color: var(--text); }
+  .next-date { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+  .cal-section { margin-bottom: 2rem; }
+  .month-tabs { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .month-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 5px 13px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .month-btn:hover { background: var(--surface); color: var(--text); }
+  .month-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  .week-block { margin-bottom: 10px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .week-header { background: var(--surface2); padding: 7px 14px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .cal-row { display: flex; align-items: center; padding: 8px 14px; border-top: 1px solid var(--border); gap: 10px; }
+  .cal-day  { font-size: 12px; color: var(--muted); min-width: 70px; }
+  .cal-date { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); min-width: 36px; }
+  .cal-subj { font-size: 13px; font-weight: 500; color: var(--text); min-width: 52px; }
+  .cal-chip { font-size: 11px; font-family: 'DM Mono', monospace; padding: 2px 9px; border-radius: 20px; }
+  .cc-clase { background: var(--blue-light);   color: var(--blue);   }
+  .cc-final { background: var(--accent2-light); color: var(--accent2); }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11px; color: var(--muted); align-items: center; }
+  .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+
+  /* Loading state */
+  .loading {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .loading-spinner {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    margin-bottom: 10px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    background: var(--accent2-light);
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    margin-bottom: 1rem;
+    display: none;
+  }
+
+  @media (max-width: 700px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .two-col { grid-template-columns: 1fr; }
+    .header { flex-direction: column; align-items: flex-start; }
+    .header-left h1 { font-size: 1.7rem; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>Maestría en Finanzas</h1>
+      <p>Control de avance y calendario académico</p>
+    </div>
+    <div class="header-controls">
+      <div class="view-tabs">
+        <button class="view-tab active" id="tab-panel" onclick="switchTab('panel')">Panel</button>
+        <button class="view-tab" id="tab-cal"   onclick="switchTab('cal')">Calendario</button>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon">☽</span>
+        <span id="theme-label">Oscuro</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="error-msg" id="error-msg"></div>
+
+  <!-- PANEL -->
+  <div id="view-panel">
+    <div class="metrics" id="metrics-row">
+      <div class="metric"><div class="loading"><div class="loading-spinner"></div></div></div>
+      <div class="metric"><div class="loading"><div class="loading-spinner"></div></div></div>
+      <div class="metric"><div class="loading"><div class="loading-spinner"></div></div></div>
+      <div class="metric"><div class="loading"><div class="loading-spinner"></div></div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-header">Próximas fechas</div>
+      <div id="next-list"><div class="loading"><div class="loading-spinner"></div></div></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">Materias obligatorias</div>
+        <div id="list-oblig"><div class="loading"><div class="loading-spinner"></div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">Electivas</div>
+        <div id="list-elec"><div class="loading"><div class="loading-spinner"></div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALENDARIO -->
+  <div id="view-cal" style="display:none">
+    <div class="cal-section">
+      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:.8rem;">
+        <div class="legend">
+          <span><span class="legend-dot" style="background:var(--blue)"></span>Clase</span>
+          <span><span class="legend-dot" style="background:var(--accent2)"></span>Final</span>
+        </div>
+      </div>
+      <div class="month-tabs" id="month-tabs"></div>
+      <div id="cal-content"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────
+const SHEET_ID = '1IsudY6l9URO3aVPFmMcnLrSJp27tEq4w4Pg1uDsHXZ8';
+const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=`;
+
+// ── FETCH CSV FROM SHEETS ─────────────────────────────────────────
+async function fetchSheet(sheetName) {
+  const url = BASE_URL + encodeURIComponent(sheetName);
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`No se pudo cargar la hoja "${sheetName}"`);
+  const text = await res.text();
+  return parseCSV(text);
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = splitCSVLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, ''));
+  return lines.slice(1).map(line => {
+    const vals = splitCSVLine(line).map(v => v.trim().replace(/^"|"$/g, ''));
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = vals[i] || '');
+    return obj;
+  }).filter(row => Object.values(row).some(v => v));
+}
+
+function splitCSVLine(line) {
+  const result = [];
+  let cur = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') { inQuotes = !inQuotes; }
+    else if (line[i] === ',' && !inQuotes) { result.push(cur); cur = ''; }
+    else { cur += line[i]; }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ── BADGE ─────────────────────────────────────────────────────────
+function badgeClass(estado) {
+  const e = estado.toLowerCase();
+  if (e === 'aprobada') return 'b-ok';
+  if (e === 'cursando') return 'b-cur';
+  if (e === 'pronto' || e === 'inicia') return 'b-soon';
+  return 'b-pend';
+}
+
+// ── RENDER SUBJECTS ───────────────────────────────────────────────
+function renderSubjects(listId, rows) {
+  const el = document.getElementById(listId);
+  if (!rows.length) { el.innerHTML = '<div class="loading">Sin datos.</div>'; return; }
+  el.innerHTML = rows.map(r => `
+    <div class="subj-row">
+      <span class="subj-name">${r['Materia'] || ''}</span>
+      <span class="badge ${badgeClass(r['Estado'])}">${r['Estado'] || ''}</span>
+      <span class="nota">${r['Nota'] || ''}</span>
+    </div>
+  `).join('');
+}
+
+// ── RENDER METRICS ────────────────────────────────────────────────
+function renderMetrics(oblig, elec) {
+  const totalOblig = oblig.length;
+  const doneOblig  = oblig.filter(r => r['Estado'].toLowerCase() === 'aprobada').length;
+  const totalElec  = 15;
+  const doneElec   = elec.filter(r => r['Estado'].toLowerCase() === 'aprobada').length;
+  const cursando   = oblig.filter(r => r['Estado'].toLowerCase() === 'cursando');
+  const curNames   = cursando.map(r => r['Abreviatura'] || r['Materia'].split(' ')[0]).join(' · ') || '—';
+
+  document.getElementById('metrics-row').innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Obligatorias</div>
+      <div class="metric-value">${doneOblig}<span>/${totalOblig}</span></div>
+      <div class="metric-sub">${Math.round(doneOblig/totalOblig*100)}% completadas</div>
+      <div class="prog-bar-bg"><div class="prog-bar" style="width:${doneOblig/totalOblig*100}%"></div></div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Electivas</div>
+      <div class="metric-value">${doneElec}<span>/${totalElec}</span></div>
+      <div class="metric-sub">${Math.round(doneElec/totalElec*100)}% completadas</div>
+      <div class="prog-bar-bg"><div class="prog-bar" style="width:${doneElec/totalElec*100}%;background:var(--blue)"></div></div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">En cursado</div>
+      <div class="metric-value">${cursando.length}</div>
+      <div class="metric-sub" style="font-size:10px">${curNames}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Próximo final</div>
+      <div class="metric-value" style="font-size:1.4rem">${getNextFinal()}</div>
+      <div class="metric-sub">${getNextFinalDate()}</div>
+    </div>
+  `;
+}
+
+// ── NEXT DATES (from calendar events) ────────────────────────────
+function getNextFinal() {
+  const today = new Date().toISOString().slice(0,10);
+  const next = events.find(e => e.type === 'final' && e.date >= today);
+  return next ? next.subject : '—';
+}
+function getNextFinalDate() {
+  const today = new Date().toISOString().slice(0,10);
+  const next = events.find(e => e.type === 'final' && e.date >= today);
+  if (!next) return '';
+  const d = new Date(next.date + 'T00:00:00');
+  const ms = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${d.getDate()} de ${ms[d.getMonth()]}`;
+}
+function renderNextDates() {
+  const today = new Date().toISOString().slice(0,10);
+  const upcoming = events
+    .filter(e => e.date >= today)
+    .slice(0, 6);
+  document.getElementById('next-list').innerHTML = upcoming.map(e => {
+    const d = new Date(e.date + 'T00:00:00');
+    const ms = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    const label = `${d.getDate()} ${ms[d.getMonth()]}`;
+    return `<div class="next-row">
+      <span class="next-subj">${e.subject} — ${e.detail}</span>
+      <span class="next-date">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── CALENDAR ─────────────────────────────────────────────────────
+const events = [
+  {date:'2026-04-07',day:'Martes',   subject:'ACI',   detail:'Clase 1/5', type:'clase'},
+  {date:'2026-04-08',day:'Miércoles',subject:'FOS',   detail:'Clase',     type:'clase'},
+  {date:'2026-04-09',day:'Jueves',   subject:'PTH',   detail:'Clase 2/5', type:'clase'},
+  {date:'2026-04-14',day:'Martes',   subject:'ACI',   detail:'Clase 2/5', type:'clase'},
+  {date:'2026-04-15',day:'Miércoles',subject:'FOS',   detail:'Clase',     type:'clase'},
+  {date:'2026-04-16',day:'Jueves',   subject:'PTH',   detail:'Clase 3/5', type:'clase'},
+  {date:'2026-04-23',day:'Jueves',   subject:'PTH',   detail:'Clase 4/5', type:'clase'},
+  {date:'2026-04-28',day:'Martes',   subject:'ACI',   detail:'Clase 3/5', type:'clase'},
+  {date:'2026-04-29',day:'Miércoles',subject:'FOS',   detail:'Clase',     type:'clase'},
+  {date:'2026-04-30',day:'Jueves',   subject:'PTH',   detail:'Final',     type:'final'},
+  {date:'2026-05-05',day:'Martes',   subject:'ACI',   detail:'Clase 4/5', type:'clase'},
+  {date:'2026-05-06',day:'Miércoles',subject:'FOS',   detail:'Final',     type:'final'},
+  {date:'2026-05-07',day:'Jueves',   subject:'PTH 2', detail:'Clase 1/4', type:'clase'},
+  {date:'2026-05-14',day:'Jueves',   subject:'PTH 2', detail:'Clase 2/4', type:'clase'},
+  {date:'2026-05-15',day:'Viernes',  subject:'MEM',   detail:'Clase 1/6', type:'clase'},
+  {date:'2026-05-21',day:'Jueves',   subject:'PTH 2', detail:'Clase 3/4', type:'clase'},
+  {date:'2026-05-22',day:'Viernes',  subject:'MEM',   detail:'Clase 2/6', type:'clase'},
+  {date:'2026-05-26',day:'Martes',   subject:'ACI',   detail:'Clase 5/5', type:'clase'},
+  {date:'2026-05-27',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-05-28',day:'Jueves',   subject:'PTH 2', detail:'Clase 4/4', type:'clase'},
+  {date:'2026-05-29',day:'Viernes',  subject:'MEM',   detail:'Clase 3/6', type:'clase'},
+  {date:'2026-06-04',day:'Jueves',   subject:'PTH 2', detail:'Final',     type:'final'},
+  {date:'2026-06-05',day:'Viernes',  subject:'MEM',   detail:'Clase 4/6', type:'clase'},
+  {date:'2026-06-09',day:'Martes',   subject:'ACI',   detail:'Final',     type:'final'},
+  {date:'2026-06-10',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-06-11',day:'Jueves',   subject:'VPA II',detail:'Clase 1/n', type:'clase'},
+  {date:'2026-06-12',day:'Viernes',  subject:'MEM',   detail:'Clase 5/6', type:'clase'},
+  {date:'2026-06-17',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-06-18',day:'Jueves',   subject:'VPA II',detail:'Clase 2/n', type:'clase'},
+  {date:'2026-06-19',day:'Viernes',  subject:'MEM',   detail:'Clase 6/6', type:'clase'},
+  {date:'2026-06-25',day:'Jueves',   subject:'VPA II',detail:'Clase 3/n', type:'clase'},
+  {date:'2026-06-26',day:'Viernes',  subject:'MEM',   detail:'Final',     type:'final'},
+  {date:'2026-06-30',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
+  {date:'2026-07-01',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-07-02',day:'Jueves',   subject:'VPA II',detail:'Clase 4/n', type:'clase'},
+  {date:'2026-07-07',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
+  {date:'2026-07-08',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-07-09',day:'Jueves',   subject:'VPA II',detail:'Clase 5/n', type:'clase'},
+  {date:'2026-08-04',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
+  {date:'2026-08-05',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-08-06',day:'Jueves',   subject:'VPA II',detail:'Clase 6/n', type:'clase'},
+  {date:'2026-08-07',day:'Viernes',  subject:'ARF',   detail:'Clase',     type:'clase'},
+  {date:'2026-08-11',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
+  {date:'2026-08-12',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-08-14',day:'Viernes',  subject:'ARF',   detail:'Clase',     type:'clase'},
+  {date:'2026-08-20',day:'Jueves',   subject:'AT II', detail:'Clase',     type:'clase'},
+  {date:'2026-08-25',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
+  {date:'2026-08-26',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-08-27',day:'Jueves',   subject:'AT II', detail:'Clase',     type:'clase'},
+  {date:'2026-08-28',day:'Viernes',  subject:'ARF',   detail:'Final',     type:'final'},
+  {date:'2026-09-01',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
+  {date:'2026-09-02',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-09-03',day:'Jueves',   subject:'AT II', detail:'Clase',     type:'clase'},
+  {date:'2026-09-10',day:'Jueves',   subject:'AT II', detail:'Clase',     type:'clase'},
+  {date:'2026-09-11',day:'Viernes',  subject:'PE I',  detail:'Clase',     type:'clase'},
+  {date:'2026-09-15',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
+  {date:'2026-09-16',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-09-17',day:'Jueves',   subject:'AT II', detail:'Final',     type:'final'},
+  {date:'2026-09-18',day:'Viernes',  subject:'PE I',  detail:'Clase',     type:'clase'},
+  {date:'2026-09-22',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
+  {date:'2026-09-23',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-09-24',day:'Jueves',   subject:'ETICA', detail:'Clase',     type:'clase'},
+  {date:'2026-09-25',day:'Viernes',  subject:'PE I',  detail:'Clase',     type:'clase'},
+  {date:'2026-10-01',day:'Jueves',   subject:'ETICA', detail:'Clase',     type:'clase'},
+  {date:'2026-10-02',day:'Viernes',  subject:'PE I',  detail:'Clase',     type:'clase'},
+  {date:'2026-10-06',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
+  {date:'2026-10-07',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-10-08',day:'Jueves',   subject:'ETICA', detail:'Clase',     type:'clase'},
+  {date:'2026-10-09',day:'Viernes',  subject:'PE I',  detail:'Final',     type:'final'},
+  {date:'2026-10-13',day:'Martes',   subject:'ECEF',  detail:'Final',     type:'final'},
+  {date:'2026-10-14',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
+  {date:'2026-10-15',day:'Jueves',   subject:'ETICA', detail:'Clase',     type:'clase'},
+  {date:'2026-10-16',day:'Viernes',  subject:'SDE',   detail:'Clase',     type:'clase'},
+  {date:'2026-10-22',day:'Jueves',   subject:'ETICA', detail:'Final',     type:'final'},
+  {date:'2026-10-23',day:'Viernes',  subject:'SDE',   detail:'Clase',     type:'clase'},
+  {date:'2026-10-29',day:'Jueves',   subject:'IAV',   detail:'Clase',     type:'clase'},
+  {date:'2026-10-30',day:'Viernes',  subject:'SDE',   detail:'Clase',     type:'clase'},
+  {date:'2026-11-05',day:'Jueves',   subject:'IAV',   detail:'Clase',     type:'clase'},
+  {date:'2026-11-06',day:'Viernes',  subject:'SDE',   detail:'Clase',     type:'clase'},
+  {date:'2026-11-12',day:'Jueves',   subject:'IAV',   detail:'Clase',     type:'clase'},
+  {date:'2026-11-13',day:'Viernes',  subject:'SDE',   detail:'Final',     type:'final'},
+  {date:'2026-11-19',day:'Jueves',   subject:'IAV',   detail:'Final',     type:'final'},
+];
+
+const months = [
+  {key:'2026-04',label:'Abril'},{key:'2026-05',label:'Mayo'},
+  {key:'2026-06',label:'Junio'},{key:'2026-07',label:'Julio'},
+  {key:'2026-08',label:'Agosto'},{key:'2026-09',label:'Septiembre'},
+  {key:'2026-10',label:'Octubre'},{key:'2026-11',label:'Noviembre'},
+];
+
+function getMonday(ds) {
+  const d = new Date(ds+'T00:00:00'); const day = d.getDay();
+  const diff = day===0?-6:1-day; const m = new Date(d);
+  m.setDate(d.getDate()+diff); return m.toISOString().slice(0,10);
+}
+function weekRange(ms) {
+  const mon = new Date(ms+'T00:00:00'); const fri = new Date(mon);
+  fri.setDate(mon.getDate()+4);
+  const mn=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `Semana del ${mon.getDate()} al ${fri.getDate()} de ${mn[fri.getMonth()]}`;
+}
+function renderMonth(key) {
+  const evs = events.filter(e=>e.date.startsWith(key));
+  if (!evs.length) return `<p style="color:var(--muted);font-size:13px;padding:.5rem 0">Sin actividad registrada.</p>`;
+  const wm = {};
+  evs.forEach(e=>{ const w=getMonday(e.date); if(!wm[w]) wm[w]=[]; wm[w].push(e); });
+  return Object.keys(wm).sort().map(w => {
+    const rows = wm[w].sort((a,b)=>a.date.localeCompare(b.date)).map(ev => {
+      const d = new Date(ev.date+'T00:00:00');
+      return `<div class="cal-row">
+        <span class="cal-day">${ev.day}</span>
+        <span class="cal-date">${d.getDate()}/${d.getMonth()+1}</span>
+        <span class="cal-subj">${ev.subject}</span>
+        <span class="cal-chip ${ev.type==='final'?'cc-final':'cc-clase'}">${ev.detail}</span>
+      </div>`;
+    }).join('');
+    return `<div class="week-block"><div class="week-header">${weekRange(w)}</div>${rows}</div>`;
+  }).join('');
+}
+
+let activeMonth = '2026-04';
+function initCalendar() {
+  const tabsEl = document.getElementById('month-tabs');
+  months.forEach(m => {
+    const btn = document.createElement('button');
+    btn.className = 'month-btn' + (m.key===activeMonth?' active':'');
+    btn.textContent = m.label;
+    btn.onclick = () => {
+      activeMonth = m.key;
+      document.querySelectorAll('.month-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('cal-content').innerHTML = renderMonth(activeMonth);
+    };
+    tabsEl.appendChild(btn);
+  });
+  document.getElementById('cal-content').innerHTML = renderMonth(activeMonth);
+}
+
+// ── TABS ─────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('view-panel').style.display = tab==='panel' ? 'block' : 'none';
+  document.getElementById('view-cal').style.display   = tab==='cal'   ? 'block' : 'none';
+  document.getElementById('tab-panel').classList.toggle('active', tab==='panel');
+  document.getElementById('tab-cal').classList.toggle('active',   tab==='cal');
+}
+
+// ── THEME ─────────────────────────────────────────────────────────
+let dark = false;
+function toggleTheme() {
+  dark = !dark;
+  document.documentElement.classList.toggle('dark', dark);
+  document.getElementById('theme-icon').textContent  = dark ? '○' : '☽';
+  document.getElementById('theme-label').textContent = dark ? 'Claro' : 'Oscuro';
+}
+
+// ── INIT ─────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const [oblig, elec] = await Promise.all([
+      fetchSheet('Obligatorias'),
+      fetchSheet('Electivas'),
+    ]);
+    renderMetrics(oblig, elec);
+    renderSubjects('list-oblig', oblig);
+    renderSubjects('list-elec', elec);
+    renderNextDates();
+  } catch(e) {
+    const err = document.getElementById('error-msg');
+    err.style.display = 'block';
+    err.textContent = 'No se pudieron cargar los datos de Google Sheets. Verificá que la planilla esté compartida públicamente.';
+    console.error(e);
+  }
+  initCalendar();
+}
+
+init();
+</script>
+</body>
+</html>
