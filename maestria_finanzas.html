@@ -309,38 +309,36 @@
 <script>
 // ── CONFIG ────────────────────────────────────────────────────────
 const SHEET_ID = '1IsudY6l9URO3aVPFmMcnLrSJp27tEq4w4Pg1uDsHXZ8';
-const BASE_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=`;
 
-// ── FETCH CSV FROM SHEETS ─────────────────────────────────────────
-async function fetchSheet(sheetName) {
-  const url = BASE_URL + encodeURIComponent(sheetName);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`No se pudo cargar la hoja "${sheetName}"`);
-  const text = await res.text();
-  return parseCSV(text);
-}
+// ── FETCH VIA JSONP (evita CORS) ──────────────────────────────────
+function fetchSheet(sheetName) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + sheetName.replace(/\W/g,'_') + '_' + Date.now();
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&tqx=responseHandler:${cbName}`;
 
-function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  const headers = splitCSVLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, ''));
-  return lines.slice(1).map(line => {
-    const vals = splitCSVLine(line).map(v => v.trim().replace(/^"|"$/g, ''));
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = vals[i] || '');
-    return obj;
-  }).filter(row => Object.values(row).some(v => v));
-}
+    window[cbName] = function(data) {
+      delete window[cbName];
+      document.getElementById(cbName)?.remove();
+      try {
+        const cols = data.table.cols.map(c => c.label);
+        const rows = data.table.rows
+          .filter(r => r && r.c && r.c.some(c => c && c.v != null))
+          .map(r => {
+            const obj = {};
+            cols.forEach((col, i) => { obj[col] = (r.c[i] && r.c[i].v != null) ? String(r.c[i].v) : ''; });
+            return obj;
+          });
+        resolve(rows);
+      } catch(e) { reject(e); }
+    };
 
-function splitCSVLine(line) {
-  const result = [];
-  let cur = '', inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    if (line[i] === '"') { inQuotes = !inQuotes; }
-    else if (line[i] === ',' && !inQuotes) { result.push(cur); cur = ''; }
-    else { cur += line[i]; }
-  }
-  result.push(cur);
-  return result;
+    const script = document.createElement('script');
+    script.id = cbName;
+    script.src = url;
+    script.onerror = () => reject(new Error(`No se pudo cargar "${sheetName}"`));
+    document.head.appendChild(script);
+    setTimeout(() => reject(new Error('Timeout: ' + sheetName)), 10000);
+  });
 }
 
 // ── BADGE ─────────────────────────────────────────────────────────
@@ -366,7 +364,7 @@ function renderSubjects(listId, rows) {
 }
 
 // ── RENDER METRICS ────────────────────────────────────────────────
-function renderMetrics(oblig, elec) {
+function renderMetrics(oblig, elec, events) {
   const totalOblig = oblig.length;
   const doneOblig  = oblig.filter(r => r['Estado'].toLowerCase() === 'aprobada').length;
   const totalElec  = 15;
@@ -394,135 +392,65 @@ function renderMetrics(oblig, elec) {
     </div>
     <div class="metric">
       <div class="metric-label">Próximo final</div>
-      <div class="metric-value" style="font-size:1.4rem">${getNextFinal()}</div>
-      <div class="metric-sub">${getNextFinalDate()}</div>
+      <div class="metric-value" style="font-size:1.4rem">${getNextFinal(events)}</div>
+      <div class="metric-sub">${getNextFinalDate(events)}</div>
     </div>
   `;
 }
 
 // ── NEXT DATES (from calendar events) ────────────────────────────
-function getNextFinal() {
+function getNextFinal(events) {
   const today = new Date().toISOString().slice(0,10);
-  const next = events.find(e => e.type === 'final' && e.date >= today);
+  const next = events.find(e => e.type === 'Final' && e.date >= today);
   return next ? next.subject : '—';
 }
-function getNextFinalDate() {
+function getNextFinalDate(events) {
   const today = new Date().toISOString().slice(0,10);
-  const next = events.find(e => e.type === 'final' && e.date >= today);
+  const next = events.find(e => e.type === 'Final' && e.date >= today);
   if (!next) return '';
   const d = new Date(next.date + 'T00:00:00');
   const ms = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   return `${d.getDate()} de ${ms[d.getMonth()]}`;
 }
-function renderNextDates() {
+function renderNextDates(events) {
   const today = new Date().toISOString().slice(0,10);
-  const upcoming = events
-    .filter(e => e.date >= today)
-    .slice(0, 6);
+  const upcoming = events.filter(e => e.date >= today).slice(0, 6);
+  const ms = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   document.getElementById('next-list').innerHTML = upcoming.map(e => {
     const d = new Date(e.date + 'T00:00:00');
-    const ms = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
-    const label = `${d.getDate()} ${ms[d.getMonth()]}`;
     return `<div class="next-row">
       <span class="next-subj">${e.subject} — ${e.detail}</span>
-      <span class="next-date">${label}</span>
+      <span class="next-date">${d.getDate()} ${ms[d.getMonth()]}</span>
     </div>`;
   }).join('');
 }
 
-// ── CALENDAR ─────────────────────────────────────────────────────
-const events = [
-  {date:'2026-04-07',day:'Martes',   subject:'ACI',   detail:'Clase 1/5', type:'clase'},
-  {date:'2026-04-08',day:'Miércoles',subject:'FOS',   detail:'Clase',     type:'clase'},
-  {date:'2026-04-09',day:'Jueves',   subject:'PTH',   detail:'Clase 2/5', type:'clase'},
-  {date:'2026-04-14',day:'Martes',   subject:'ACI',   detail:'Clase 2/5', type:'clase'},
-  {date:'2026-04-15',day:'Miércoles',subject:'FOS',   detail:'Clase',     type:'clase'},
-  {date:'2026-04-16',day:'Jueves',   subject:'PTH',   detail:'Clase 3/5', type:'clase'},
-  {date:'2026-04-23',day:'Jueves',   subject:'PTH',   detail:'Clase 4/5', type:'clase'},
-  {date:'2026-04-28',day:'Martes',   subject:'ACI',   detail:'Clase 3/5', type:'clase'},
-  {date:'2026-04-29',day:'Miércoles',subject:'FOS',   detail:'Clase',     type:'clase'},
-  {date:'2026-04-30',day:'Jueves',   subject:'PTH',   detail:'Final',     type:'final'},
-  {date:'2026-05-05',day:'Martes',   subject:'ACI',   detail:'Clase 4/5', type:'clase'},
-  {date:'2026-05-06',day:'Miércoles',subject:'FOS',   detail:'Final',     type:'final'},
-  {date:'2026-05-07',day:'Jueves',   subject:'PTH 2', detail:'Clase 1/4', type:'clase'},
-  {date:'2026-05-14',day:'Jueves',   subject:'PTH 2', detail:'Clase 2/4', type:'clase'},
-  {date:'2026-05-15',day:'Viernes',  subject:'MEM',   detail:'Clase 1/6', type:'clase'},
-  {date:'2026-05-21',day:'Jueves',   subject:'PTH 2', detail:'Clase 3/4', type:'clase'},
-  {date:'2026-05-22',day:'Viernes',  subject:'MEM',   detail:'Clase 2/6', type:'clase'},
-  {date:'2026-05-26',day:'Martes',   subject:'ACI',   detail:'Clase 5/5', type:'clase'},
-  {date:'2026-05-27',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-05-28',day:'Jueves',   subject:'PTH 2', detail:'Clase 4/4', type:'clase'},
-  {date:'2026-05-29',day:'Viernes',  subject:'MEM',   detail:'Clase 3/6', type:'clase'},
-  {date:'2026-06-04',day:'Jueves',   subject:'PTH 2', detail:'Final',     type:'final'},
-  {date:'2026-06-05',day:'Viernes',  subject:'MEM',   detail:'Clase 4/6', type:'clase'},
-  {date:'2026-06-09',day:'Martes',   subject:'ACI',   detail:'Final',     type:'final'},
-  {date:'2026-06-10',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-06-11',day:'Jueves',   subject:'VPA II',detail:'Clase 1/n', type:'clase'},
-  {date:'2026-06-12',day:'Viernes',  subject:'MEM',   detail:'Clase 5/6', type:'clase'},
-  {date:'2026-06-17',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-06-18',day:'Jueves',   subject:'VPA II',detail:'Clase 2/n', type:'clase'},
-  {date:'2026-06-19',day:'Viernes',  subject:'MEM',   detail:'Clase 6/6', type:'clase'},
-  {date:'2026-06-25',day:'Jueves',   subject:'VPA II',detail:'Clase 3/n', type:'clase'},
-  {date:'2026-06-26',day:'Viernes',  subject:'MEM',   detail:'Final',     type:'final'},
-  {date:'2026-06-30',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
-  {date:'2026-07-01',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-07-02',day:'Jueves',   subject:'VPA II',detail:'Clase 4/n', type:'clase'},
-  {date:'2026-07-07',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
-  {date:'2026-07-08',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-07-09',day:'Jueves',   subject:'VPA II',detail:'Clase 5/n', type:'clase'},
-  {date:'2026-08-04',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
-  {date:'2026-08-05',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-08-06',day:'Jueves',   subject:'VPA II',detail:'Clase 6/n', type:'clase'},
-  {date:'2026-08-07',day:'Viernes',  subject:'ARF',   detail:'Clase',     type:'clase'},
-  {date:'2026-08-11',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
-  {date:'2026-08-12',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-08-14',day:'Viernes',  subject:'ARF',   detail:'Clase',     type:'clase'},
-  {date:'2026-08-20',day:'Jueves',   subject:'AT II', detail:'Clase',     type:'clase'},
-  {date:'2026-08-25',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
-  {date:'2026-08-26',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-08-27',day:'Jueves',   subject:'AT II', detail:'Clase',     type:'clase'},
-  {date:'2026-08-28',day:'Viernes',  subject:'ARF',   detail:'Final',     type:'final'},
-  {date:'2026-09-01',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
-  {date:'2026-09-02',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-09-03',day:'Jueves',   subject:'AT II', detail:'Clase',     type:'clase'},
-  {date:'2026-09-10',day:'Jueves',   subject:'AT II', detail:'Clase',     type:'clase'},
-  {date:'2026-09-11',day:'Viernes',  subject:'PE I',  detail:'Clase',     type:'clase'},
-  {date:'2026-09-15',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
-  {date:'2026-09-16',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-09-17',day:'Jueves',   subject:'AT II', detail:'Final',     type:'final'},
-  {date:'2026-09-18',day:'Viernes',  subject:'PE I',  detail:'Clase',     type:'clase'},
-  {date:'2026-09-22',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
-  {date:'2026-09-23',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-09-24',day:'Jueves',   subject:'ETICA', detail:'Clase',     type:'clase'},
-  {date:'2026-09-25',day:'Viernes',  subject:'PE I',  detail:'Clase',     type:'clase'},
-  {date:'2026-10-01',day:'Jueves',   subject:'ETICA', detail:'Clase',     type:'clase'},
-  {date:'2026-10-02',day:'Viernes',  subject:'PE I',  detail:'Clase',     type:'clase'},
-  {date:'2026-10-06',day:'Martes',   subject:'ECEF',  detail:'Clase',     type:'clase'},
-  {date:'2026-10-07',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-10-08',day:'Jueves',   subject:'ETICA', detail:'Clase',     type:'clase'},
-  {date:'2026-10-09',day:'Viernes',  subject:'PE I',  detail:'Final',     type:'final'},
-  {date:'2026-10-13',day:'Martes',   subject:'ECEF',  detail:'Final',     type:'final'},
-  {date:'2026-10-14',day:'Miércoles',subject:'TTF',   detail:'Clase',     type:'clase'},
-  {date:'2026-10-15',day:'Jueves',   subject:'ETICA', detail:'Clase',     type:'clase'},
-  {date:'2026-10-16',day:'Viernes',  subject:'SDE',   detail:'Clase',     type:'clase'},
-  {date:'2026-10-22',day:'Jueves',   subject:'ETICA', detail:'Final',     type:'final'},
-  {date:'2026-10-23',day:'Viernes',  subject:'SDE',   detail:'Clase',     type:'clase'},
-  {date:'2026-10-29',day:'Jueves',   subject:'IAV',   detail:'Clase',     type:'clase'},
-  {date:'2026-10-30',day:'Viernes',  subject:'SDE',   detail:'Clase',     type:'clase'},
-  {date:'2026-11-05',day:'Jueves',   subject:'IAV',   detail:'Clase',     type:'clase'},
-  {date:'2026-11-06',day:'Viernes',  subject:'SDE',   detail:'Clase',     type:'clase'},
-  {date:'2026-11-12',day:'Jueves',   subject:'IAV',   detail:'Clase',     type:'clase'},
-  {date:'2026-11-13',day:'Viernes',  subject:'SDE',   detail:'Final',     type:'final'},
-  {date:'2026-11-19',day:'Jueves',   subject:'IAV',   detail:'Final',     type:'final'},
-];
+// ── PARSE CALENDAR ROWS FROM SHEETS ──────────────────────────────
+const diasES = {'lunes':'Lunes','martes':'Martes','miércoles':'Miércoles','miercoles':'Miércoles',
+  'jueves':'Jueves','viernes':'Viernes','sábado':'Sábado','domingo':'Domingo'};
 
-const months = [
-  {key:'2026-04',label:'Abril'},{key:'2026-05',label:'Mayo'},
-  {key:'2026-06',label:'Junio'},{key:'2026-07',label:'Julio'},
-  {key:'2026-08',label:'Agosto'},{key:'2026-09',label:'Septiembre'},
-  {key:'2026-10',label:'Octubre'},{key:'2026-11',label:'Noviembre'},
-];
+function parseCalendarRows(rows) {
+  return rows.map(r => {
+    // Fecha viene como "dd/mm/yyyy" desde Sheets
+    const raw = r['Fecha'] || '';
+    let iso = '';
+    const parts = raw.split('/');
+    if (parts.length === 3) {
+      iso = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+    }
+    const d = new Date(iso + 'T00:00:00');
+    const dayNames = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    return {
+      date: iso,
+      day: dayNames[d.getDay()] || '',
+      subject: r['Materia'] || '',
+      detail:  r['Detalle'] || '',
+      type:    r['Tipo']    || '',
+    };
+  }).filter(e => e.date && e.subject);
+}
 
+// ── CALENDAR RENDER ───────────────────────────────────────────────
 function getMonday(ds) {
   const d = new Date(ds+'T00:00:00'); const day = d.getDay();
   const diff = day===0?-6:1-day; const m = new Date(d);
@@ -534,7 +462,7 @@ function weekRange(ms) {
   const mn=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   return `Semana del ${mon.getDate()} al ${fri.getDate()} de ${mn[fri.getMonth()]}`;
 }
-function renderMonth(key) {
+function renderMonth(events, key) {
   const evs = events.filter(e=>e.date.startsWith(key));
   if (!evs.length) return `<p style="color:var(--muted);font-size:13px;padding:.5rem 0">Sin actividad registrada.</p>`;
   const wm = {};
@@ -542,11 +470,12 @@ function renderMonth(key) {
   return Object.keys(wm).sort().map(w => {
     const rows = wm[w].sort((a,b)=>a.date.localeCompare(b.date)).map(ev => {
       const d = new Date(ev.date+'T00:00:00');
+      const isFinal = ev.type.toLowerCase() === 'final';
       return `<div class="cal-row">
         <span class="cal-day">${ev.day}</span>
         <span class="cal-date">${d.getDate()}/${d.getMonth()+1}</span>
         <span class="cal-subj">${ev.subject}</span>
-        <span class="cal-chip ${ev.type==='final'?'cc-final':'cc-clase'}">${ev.detail}</span>
+        <span class="cal-chip ${isFinal?'cc-final':'cc-clase'}">${ev.detail}</span>
       </div>`;
     }).join('');
     return `<div class="week-block"><div class="week-header">${weekRange(w)}</div>${rows}</div>`;
@@ -554,21 +483,35 @@ function renderMonth(key) {
 }
 
 let activeMonth = '2026-04';
-function initCalendar() {
+function initCalendar(events) {
+  // Construir tabs a partir de los meses presentes en los datos
+  const monthKeys = [...new Set(events.map(e => e.date.slice(0,7)))].sort();
+  const monthNames = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  const monthLabels = {
+    '2026-04':'Abril','2026-05':'Mayo','2026-06':'Junio','2026-07':'Julio',
+    '2026-08':'Agosto','2026-09':'Septiembre','2026-10':'Octubre','2026-11':'Noviembre',
+    '2026-12':'Diciembre','2027-01':'Enero','2027-02':'Febrero','2027-03':'Marzo',
+  };
+
+  // Set initial active month to current or first available
+  const todayKey = new Date().toISOString().slice(0,7);
+  activeMonth = monthKeys.includes(todayKey) ? todayKey : monthKeys[0];
+
   const tabsEl = document.getElementById('month-tabs');
-  months.forEach(m => {
+  tabsEl.innerHTML = '';
+  monthKeys.forEach(key => {
     const btn = document.createElement('button');
-    btn.className = 'month-btn' + (m.key===activeMonth?' active':'');
-    btn.textContent = m.label;
+    btn.className = 'month-btn' + (key===activeMonth?' active':'');
+    btn.textContent = monthLabels[key] || key;
     btn.onclick = () => {
-      activeMonth = m.key;
+      activeMonth = key;
       document.querySelectorAll('.month-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById('cal-content').innerHTML = renderMonth(activeMonth);
+      document.getElementById('cal-content').innerHTML = renderMonth(events, activeMonth);
     };
     tabsEl.appendChild(btn);
   });
-  document.getElementById('cal-content').innerHTML = renderMonth(activeMonth);
+  document.getElementById('cal-content').innerHTML = renderMonth(events, activeMonth);
 }
 
 // ── TABS ─────────────────────────────────────────────────────────
@@ -591,21 +534,23 @@ function toggleTheme() {
 // ── INIT ─────────────────────────────────────────────────────────
 async function init() {
   try {
-    const [oblig, elec] = await Promise.all([
+    const [oblig, elec, calRows] = await Promise.all([
       fetchSheet('Obligatorias'),
       fetchSheet('Electivas'),
+      fetchSheet('Calendario'),
     ]);
-    renderMetrics(oblig, elec);
+    const events = parseCalendarRows(calRows);
+    renderMetrics(oblig, elec, events);
     renderSubjects('list-oblig', oblig);
     renderSubjects('list-elec', elec);
-    renderNextDates();
+    renderNextDates(events);
+    initCalendar(events);
   } catch(e) {
     const err = document.getElementById('error-msg');
     err.style.display = 'block';
     err.textContent = 'No se pudieron cargar los datos de Google Sheets. Verificá que la planilla esté compartida públicamente.';
     console.error(e);
   }
-  initCalendar();
 }
 
 init();
