@@ -320,14 +320,16 @@ function fetchSheet(sheetName) {
       delete window[cbName];
       document.getElementById(cbName)?.remove();
       try {
-        const cols = data.table.cols.map(c => c.label);
+        const cols = data.table.cols.map(c => c.label.trim());
         const rows = data.table.rows
           .filter(r => r && r.c && r.c.some(c => c && c.v != null))
           .map(r => {
             const obj = {};
-            cols.forEach((col, i) => { obj[col] = (r.c[i] && r.c[i].v != null) ? String(r.c[i].v) : ''; });
+            cols.forEach((col, i) => { obj[col] = (r.c[i] && r.c[i].v != null) ? String(r.c[i].v).trim() : ''; });
             return obj;
-          });
+          })
+          .filter(row => Object.values(row).some(v => v));
+        console.log(`Hoja cargada, columnas:`, cols, `filas:`, rows.length, rows[0]);
         resolve(rows);
       } catch(e) { reject(e); }
     };
@@ -343,7 +345,7 @@ function fetchSheet(sheetName) {
 
 // ── BADGE ─────────────────────────────────────────────────────────
 function badgeClass(estado) {
-  const e = estado.toLowerCase();
+  const e = (estado||'').toLowerCase().trim();
   if (e === 'aprobada') return 'b-ok';
   if (e === 'cursando') return 'b-cur';
   if (e === 'pronto' || e === 'inicia') return 'b-soon';
@@ -366,11 +368,11 @@ function renderSubjects(listId, rows) {
 // ── RENDER METRICS ────────────────────────────────────────────────
 function renderMetrics(oblig, elec, events) {
   const totalOblig = oblig.length;
-  const doneOblig  = oblig.filter(r => r['Estado'].toLowerCase() === 'aprobada').length;
+  const doneOblig  = oblig.filter(r => (r['Estado']||'').toLowerCase() === 'aprobada').length;
   const totalElec  = 15;
-  const doneElec   = elec.filter(r => r['Estado'].toLowerCase() === 'aprobada').length;
-  const cursando   = oblig.filter(r => r['Estado'].toLowerCase() === 'cursando');
-  const curNames   = cursando.map(r => r['Abreviatura'] || r['Materia'].split(' ')[0]).join(' · ') || '—';
+  const doneElec   = elec.filter(r => (r['Estado']||'').toLowerCase() === 'aprobada').length;
+  const cursando   = oblig.filter(r => (r['Estado']||'').toLowerCase() === 'cursando');
+  const curNames   = cursando.map(r => r['Abreviatura'] || (r['Materia']||'').split(' ')[0]).join(' · ') || '—';
 
   document.getElementById('metrics-row').innerHTML = `
     <div class="metric">
