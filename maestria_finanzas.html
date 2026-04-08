@@ -325,10 +325,12 @@ async function fetchSheet(sheetName) {
 
 function parseCSV(text) {
   const lines = text.trim().split('\n');
-  const headers = splitLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, '').trim());
+  const firstLine = lines[0];
+  const separator = firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
+  const headers = splitLine(lines[0], separator).map(h => h.trim().replace(/^"|"$/g, '').trim());
   return lines.slice(1)
     .map(line => {
-      const vals = splitLine(line).map(v => v.trim().replace(/^"|"$/g, '').trim());
+      const vals = splitLine(line, separator).map(v => v.trim().replace(/^"|"$/g, '').trim());
       const obj = {};
       headers.forEach((h, i) => obj[h] = vals[i] || '');
       return obj;
@@ -336,11 +338,11 @@ function parseCSV(text) {
     .filter(row => Object.values(row).some(v => v));
 }
 
-function splitLine(line) {
+function splitLine(line, sep = ',') {
   const result = []; let cur = '', inQ = false;
   for (let i = 0; i < line.length; i++) {
     if (line[i] === '"') { inQ = !inQ; }
-    else if (line[i] === ',' && !inQ) { result.push(cur); cur = ''; }
+    else if (line[i] === sep && !inQ) { result.push(cur); cur = ''; }
     else { cur += line[i]; }
   }
   result.push(cur);
