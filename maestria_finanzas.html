@@ -313,11 +313,11 @@ const SHEET_ID = '1IsudY6l9URO3aVPFmMcnLrSJp27tEq4w4Pg1uDsHXZ8';
 // ── FETCH VIA PROXY (evita CORS) ──────────────────────────────────
 async function fetchSheet(sheetName) {
   const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
-  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(csvUrl)}`;
+  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(csvUrl)}`;
   const res = await fetch(proxyUrl);
   if (!res.ok) throw new Error(`Error cargando ${sheetName}`);
-  const json = await res.json();
-  const rows = parseCSV(json.contents);
+  const text = await res.text();
+  const rows = parseCSV(text);
   console.log(`Hoja "${sheetName}" — columnas:`, Object.keys(rows[0]||{}), `filas:`, rows.length);
   return rows;
 }
