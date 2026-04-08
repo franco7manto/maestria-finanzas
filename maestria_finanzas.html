@@ -25,22 +25,22 @@
     --gold-light: #faf3e3;
   }
   html.dark {
-    --bg: #161412;
-    --surface: #1f1d1a;
-    --surface2: #272421;
-    --border: #333028;
-    --text: #ede9e3;
-    --muted: #8a8278;
-    --accent: #4a7a66;
-    --accent-light: #1a2e27;
-    --accent2: #b8714a;
-    --accent2-light: #2a1e17;
-    --amber: #c99040;
-    --amber-light: #261e0e;
-    --blue: #5a8ab8;
-    --blue-light: #151e28;
-    --gold: #c9a84c;
-    --gold-light: rgba(201,168,76,0.12);
+    --bg: #1a1a1e;
+    --surface: #26262c;
+    --surface2: #2f2f36;
+    --border: #3d3d47;
+    --text: #f0eee9;
+    --muted: #a09c96;
+    --accent: #5a9e84;
+    --accent-light: #1e3530;
+    --accent2: #cc7a52;
+    --accent2-light: #321e14;
+    --amber: #d4a040;
+    --amber-light: #2e2010;
+    --blue: #6a9fd0;
+    --blue-light: #1a2535;
+    --gold: #d4a84c;
+    --gold-light: rgba(212,168,76,0.15);
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -377,11 +377,26 @@ function badgeClass(estado) {
   return 'b-pend';
 }
 
-// ── RENDER SUBJECTS ───────────────────────────────────────────────
+// ── RENDER SUBJECTS (ordenadas por estado, nota, orden original) ──
+function sortSubjects(rows) {
+  const estadoOrder = { 'aprobada': 0, 'cursando': 1 };
+  return [...rows].map((r, i) => ({...r, _idx: i})).sort((a, b) => {
+    const ea = (a['Estado']||'').toLowerCase().trim();
+    const eb = (b['Estado']||'').toLowerCase().trim();
+    const oa = estadoOrder[ea] ?? 2;
+    const ob = estadoOrder[eb] ?? 2;
+    if (oa !== ob) return oa - ob;
+    const na = parseFloat(a['Nota']) || 0;
+    const nb = parseFloat(b['Nota']) || 0;
+    if (na !== nb) return nb - na;
+    return a._idx - b._idx;
+  });
+}
+
 function renderSubjects(listId, rows) {
   const el = document.getElementById(listId);
   if (!rows.length) { el.innerHTML = '<div class="loading">Sin datos.</div>'; return; }
-  el.innerHTML = rows.map(r => `
+  el.innerHTML = sortSubjects(rows).map(r => `
     <div class="subj-row">
       <span class="subj-name">${r['Materia'] || ''}</span>
       <span class="badge ${badgeClass(r['Estado'])}">${r['Estado'] || ''}</span>
@@ -394,10 +409,12 @@ function renderSubjects(listId, rows) {
 function renderMetrics(oblig, elec, events) {
   const totalOblig = oblig.length;
   const doneOblig  = oblig.filter(r => (r['Estado']||'').toLowerCase() === 'aprobada').length;
-  const totalElec  = 15;
+  const totalElec  = elec.length;
   const doneElec   = elec.filter(r => (r['Estado']||'').toLowerCase() === 'aprobada').length;
-  const cursando   = oblig.filter(r => (r['Estado']||'').toLowerCase() === 'cursando');
-  const curNames   = cursando.map(r => r['Abreviatura'] || (r['Materia']||'').split(' ')[0]).join(' · ') || '—';
+  const cursandoOblig = oblig.filter(r => (r['Estado']||'').toLowerCase() === 'cursando');
+  const cursandoElec  = elec.filter(r => (r['Estado']||'').toLowerCase() === 'cursando');
+  const cursandoAll   = [...cursandoOblig, ...cursandoElec];
+  const curNames = cursandoAll.map(r => r['Abreviatura'] || (r['Materia']||'').split(' ')[0]).join(' · ') || '—';
 
   document.getElementById('metrics-row').innerHTML = `
     <div class="metric">
@@ -414,7 +431,7 @@ function renderMetrics(oblig, elec, events) {
     </div>
     <div class="metric">
       <div class="metric-label">En cursado</div>
-      <div class="metric-value">${cursando.length}</div>
+      <div class="metric-value">${cursandoAll.length}</div>
       <div class="metric-sub" style="font-size:10px">${curNames}</div>
     </div>
     <div class="metric">
