@@ -310,37 +310,40 @@
 // ── CONFIG ────────────────────────────────────────────────────────
 const SHEET_ID = '1IsudY6l9URO3aVPFmMcnLrSJp27tEq4w4Pg1uDsHXZ8';
 
-// ── FETCH VIA JSONP (evita CORS) ──────────────────────────────────
-function fetchSheet(sheetName) {
-  return new Promise((resolve, reject) => {
-    const cbName = 'cb_' + sheetName.replace(/\W/g,'_') + '_' + Date.now();
-    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&tqx=responseHandler:${cbName}`;
+// ── FETCH VIA PROXY (evita CORS) ──────────────────────────────────
+async function fetchSheet(sheetName) {
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+  const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(csvUrl)}`;
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error(`Error cargando ${sheetName}`);
+  const json = await res.json();
+  const rows = parseCSV(json.contents);
+  console.log(`Hoja "${sheetName}" — columnas:`, Object.keys(rows[0]||{}), `filas:`, rows.length);
+  return rows;
+}
 
-    window[cbName] = function(data) {
-      delete window[cbName];
-      document.getElementById(cbName)?.remove();
-      try {
-        const cols = data.table.cols.map(c => c.label.trim());
-        const rows = data.table.rows
-          .filter(r => r && r.c && r.c.some(c => c && c.v != null))
-          .map(r => {
-            const obj = {};
-            cols.forEach((col, i) => { obj[col] = (r.c[i] && r.c[i].v != null) ? String(r.c[i].v).trim() : ''; });
-            return obj;
-          })
-          .filter(row => Object.values(row).some(v => v));
-        console.log(`Hoja cargada, columnas:`, cols, `filas:`, rows.length, rows[0]);
-        resolve(rows);
-      } catch(e) { reject(e); }
-    };
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = splitLine(lines[0]).map(h => h.trim().replace(/^"|"$/g, '').trim());
+  return lines.slice(1)
+    .map(line => {
+      const vals = splitLine(line).map(v => v.trim().replace(/^"|"$/g, '').trim());
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = vals[i] || '');
+      return obj;
+    })
+    .filter(row => Object.values(row).some(v => v));
+}
 
-    const script = document.createElement('script');
-    script.id = cbName;
-    script.src = url;
-    script.onerror = () => reject(new Error(`No se pudo cargar "${sheetName}"`));
-    document.head.appendChild(script);
-    setTimeout(() => reject(new Error('Timeout: ' + sheetName)), 10000);
-  });
+function splitLine(line) {
+  const result = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') { inQ = !inQ; }
+    else if (line[i] === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += line[i]; }
+  }
+  result.push(cur);
+  return result;
 }
 
 // ── BADGE ─────────────────────────────────────────────────────────
